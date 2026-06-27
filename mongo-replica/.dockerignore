@@ -1,0 +1,9 @@
+# Ignore all files except what we need
+*
+
+# Include only necessary files
+!rs_keyfile
+!mongod.conf
+!init.sh
+!init.js
+!Dockerfile

@@ -1,0 +1,13 @@
+# Secrets — never commit (templates *.env.example are tracked)
+*.env
+!*.env.example
+cluster.env
+notify.env
+rs_keyfile
+
+# Generated certificate bundles
+certs-*.tar.gz
+
+# OS / editor cruft
+.DS_Store
+*.swp

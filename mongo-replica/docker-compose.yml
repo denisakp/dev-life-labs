@@ -1,0 +1,99 @@
+name: mongo-replica
+
+# Self-contained lab: local network + volumes, image built from the Dockerfile
+# in this folder. Generate the shared keyfile once before the first build:
+#   openssl rand -base64 756 > rs_keyfile
+#
+# For production you'd build & push this image to a PRIVATE registry (it bakes
+# the keyfile) and replace `build: .` with `image: <your-registry>/mongo-replica`.
+# See the article: https://denisakp.me/blog/databases/mongo/set-up-mongodb-replica-set-with-docker
+
+networks:
+  mongo-cluster:
+    name: mongo-cluster
+
+volumes:
+  mongo1_data:
+  mongo2_data:
+  mongo3_data:
+  mongo1_config:
+  mongo2_config:
+  mongo3_config:
+
+# Shared definition for the three replica nodes — only the suffix changes.
+x-mongo-node: &mongo-node
+  build: .
+  image: mongo-replica:latest
+  restart: always
+  networks: [ mongo-cluster ]
+  environment:
+    MONGO_INITDB_ROOT_USERNAME: '${MONGO_ADMIN_USER:-admin}'
+    MONGO_INITDB_ROOT_PASSWORD: '${MONGO_ADMIN_PASSWD:-veryStringPassword}'
+  healthcheck:
+    test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+    interval: 10s
+    timeout: 10s
+    retries: 5
+    start_period: 30s
+
+services:
+  mongo1:
+    <<: *mongo-node
+    container_name: mongo1
+    hostname: mongo1
+    volumes:
+      - mongo1_data:/data/db
+      - mongo1_config:/data/configdb
+
+  mongo2:
+    <<: *mongo-node
+    container_name: mongo2
+    hostname: mongo2
+    volumes:
+      - mongo2_data:/data/db
+      - mongo2_config:/data/configdb
+
+  mongo3:
+    <<: *mongo-node
+    container_name: mongo3
+    hostname: mongo3
+    volumes:
+      - mongo3_data:/data/db
+      - mongo3_config:/data/configdb
+
+  # Ephemeral: runs rs.initiate() + creates the app user, then exits.
+  # Idempotent — safe to re-run `docker compose up`.
+  mongo-init:
+    image: mongo-replica:latest
+    container_name: mongo-init
+    restart: "no"
+    entrypoint: ["/bin/bash", "/init.sh"]
+    networks: [ mongo-cluster ]
+    depends_on:
+      mongo1:
+        condition: service_healthy
+      mongo2:
+        condition: service_healthy
+      mongo3:
+        condition: service_healthy
+    environment:
+      MONGO_ROOT_USERNAME: '${MONGO_ADMIN_USER:-admin}'
+      MONGO_ROOT_PASSWORD: '${MONGO_ADMIN_PASSWD:-veryStringPassword}'
+      MONGO_DB_USER: '${DB_USERNAME:-okydook}'
+      MONGO_DB_PASSWORD: '${DB_PASSWORD:-mypassword}'
+
+  # Admin UI — waits for mongo-init to FINISH (not just start), so it never
+  # opens on a half-initialized cluster. Browse http://localhost:8081
+  mongo-express:
+    image: mongo-express:1.0.2-20-alpine3.19
+    container_name: mongo-express
+    restart: always
+    networks: [ mongo-cluster ]
+    ports:
+      - "8081:8081"
+    depends_on:
+      mongo-init:
+        condition: service_completed_successfully
+    environment:
+      ME_CONFIG_MONGODB_URL: 'mongodb://${MONGO_ADMIN_USER:-admin}:${MONGO_ADMIN_PASSWD:-veryStringPassword}@mongo1:27017,mongo2:27017,mongo3:27017/?replicaSet=okydookReplSet&authSource=admin'
+      ME_CONFIG_BASICAUTH: 'false'
