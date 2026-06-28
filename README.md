@@ -31,7 +31,7 @@ usage. Start there.
 | Lab | Article | What it does |
 | --- | --- | --- |
 | [postgresql-ha-cluster](./postgresql-ha-cluster) | [Setting up a PostgreSQL HA cluster](https://denisakp.me/blog/databases/postgres/set-up-postgresql-ha-cluster-with-patroni) | Highly available 3-node PostgreSQL with automatic failover |
-| [mongo-replica](./mongo-replica) | [MongoDB replica set with Docker](https://denisakp.me/blog/databases/mongo/set-up-mongodb-replica-set-with-docker) | 3-node MongoDB replica set from a custom image |
+| [mongo-replica](./mongo-replica) | [MongoDB replica set with Docker](https://denisakp.me/blog/databases/mongo/set-up-mongodb-replica-with-docker) | 3-node MongoDB replica set from a custom image |
 
 <!-- add a row per lab as the blog grows -->
 
